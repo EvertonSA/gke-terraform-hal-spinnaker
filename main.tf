@@ -12,6 +12,9 @@ data "google_service_account" "terraform" {
   account_id = "${var.service_account}"
 }
 
+# Query my Terraform service account from GCP
+data "google_client_config" "current" {}
+
 # Need to enable serviceusage API manully on the console first
 # https://console.developers.google.com/apis/library/serviceusage.googleapis.com
 resource "google_project_services" "myproject" {
@@ -55,14 +58,10 @@ module "gke_cluster" {
 
 # k8s provider is used for installing helm
 provider "kubernetes" {
-  load_config_file       = false
-  version                = "~> 1.1"
-  host                   = "${module.gke_cluster.host}"
-  username               = "${module.gke_cluster.username}"
-  password               = "${module.gke_cluster.password}"
-  client_certificate     = "${module.gke_cluster.client_certificate}"
-  client_key             = "${module.gke_cluster.client_key}"
-  cluster_ca_certificate = "${module.gke_cluster.cluster_ca_certificate}"
+  load_config_file = false
+  host = "https://${module.gke_cluster.endpoint}"
+  cluster_ca_certificate = "${base64decode(module.gke_cluster.cluster_ca_certificate)}"
+  token = "${data.google_client_config.current.access_token}"
 }
 
 module "spinnaker" {
